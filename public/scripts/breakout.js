@@ -96,6 +96,7 @@ function refreshBlocks(blockArray) {
 		//check if block hit by ball
 		//if ball hits multiple blocks at same time, want to cancel the double negation
 		if(blockHit(blockArray[i])) {
+			if(gameComplete()) gameOver();
 			multiHits++;
 			if(multiHits > 1) ball.velY *= -1;
 		}
@@ -233,6 +234,13 @@ function lifeLost() {
 		gameOver();
 	}
 	ball.posY = ballStart;
+}
+
+function gameComplete() {
+	for(var i = 0; i < blocks.length; i++) {
+		if(blocks[i].active) return false;
+	}
+	return true;
 }
 function gameOver() {
 	console.log("Game Over");
