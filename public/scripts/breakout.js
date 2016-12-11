@@ -14,7 +14,7 @@ var blockColors = ['red', '#064df1', '#33f106', '#8037dd', 'yellow'];
 var blockWidth = 43;
 var blockHeight = 25;
 // dictionary of block [{id, posX, posY, color, level, active}]
-var blocks = generateInitialBlocks();
+//var blocks = generateInitialBlocks();
 
 
 // Paddle Paramters
@@ -33,7 +33,7 @@ var numLives = 1;
 var highScore = localStorage.getItem("highScore") || 0;
 var newGameBtn = document.getElementById("newGameBtn");
 // Redraw canvas 20x/s ->1/60 = 0.05s = 50ms
-var game = setInterval(draw, interval);
+//var game = setInterval(draw, interval);
 
 function draw() {
 	//clear canvas before redrawing
