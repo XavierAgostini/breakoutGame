@@ -30,10 +30,12 @@ class Game {
 
 
 	drawBlocks() {
-		for(var i = 0; i < this.blocks.blocksArr.length; i++) {
-			var block = this.blocks.blocksArr[i];	
-			this.ctx.fillStyle = block.colour;
-			this.ctx.fillRect(block.posX, block.posY, block.width, block.height);
+		for(var i = 0; i < this.blocks.blockArr.length; i++) {
+			var block = this.blocks.blockArr[i];
+			if(block.active) {
+				this.ctx.fillStyle = block.colour;
+				this.ctx.fillRect(block.posX, block.posY, block.width, block.height);
+			}	
 		}     
 	}
 
@@ -57,6 +59,8 @@ class Game {
 		ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
 		this.paddle.updatePosition();
+		this.ball.ballPhysics(this.interval, this.canvasWidth, this.canvasHeight, this.paddle, this.blocks);
+		this.blocks.updateBlocks(this.ball);
 		this.drawBlocks();
 		this.drawPaddle();
 		this.drawBall();
@@ -78,9 +82,47 @@ class Ball {
 		this.velY = 0.2;
 	}
 	/* Update ball position on canvas*/
-	updatePosition() {
+	ballPhysics(interval, canvasWidth, canvasHeight, paddle, blocks) {
+		// Update Ball position
 		this.posY += this.velY * interval;
 		this.posX += this.velX * interval;
+	
+		//if ball hits bottom wall
+		if(this.posY + this.radius >= canvasHeight) {
+			console.log('bottom wall hit');
+			lifeLost();
+			this.velY *= -1;
+		}
+
+		//if ball hist top wall
+		if(this.posY - this.radius <= 0) {
+			console.log('top wall hit -a');
+			this.velY *= -1;
+		}
+
+		//if vall hits right wall
+		if(this.posX + this.radius >= canvasWidth) {
+			console.log('right wall hit -a');
+			this.velX *= -1;
+		}
+
+		//if ball hits left wall
+		if(this.posX - this.radius <= 0) {
+			console.log('left wall hit -a');
+			this.velX *= -1;
+		}
+
+
+		//ball at paddle level
+		if(this.posY >= canvasHeight - paddle.height - paddle.heightOffset) {
+			//ball hits paddle
+			if((this.posX - this.radius <= paddle.posX + paddle.width) && (this.posX + this.radius >= paddle.posX)) {
+				console.log("paddle hit -a");
+				this.velY *= -1;
+				var speed = this.posX/(paddle.posX + 0.5*paddle.width) - 1;
+				this.velX = speed > 0.5 ? 0.5 : speed;
+			}
+		}
 	}
 	get(property) {
 		return this[property];
@@ -90,12 +132,13 @@ class Ball {
 	/* Check if ball has hit a block */
 
 }
- //{posX: (canvasWidth - 50)/2, posY: canvasHeight - paddleHeightOffset, velX: 0, velY: 0, width: 100, height: 15};
+ 
 class Paddle {
 	constructor(posX, posY, canvas) {
 		this.colour = 'black';
 		this.width = 100;
 		this.height = 15;
+		this.heightOffset = 40;
 		this.posX = posX;
 		this.posY = posY;
 		this.velX = 0;
@@ -126,9 +169,7 @@ class Paddle {
 		// Event Handlers for paddle control
 		this.canvas.addEventListener("mousemove", function(event) {
 			var x = event.clientX - t.canvasOffset;
-			var y = event.clientY;
 			t.posX = x;
-			//console.log('m: ', x);
 		});
 		
 	}
@@ -163,11 +204,38 @@ class Block {
 	get (property) {
 		return this[property];
 	}
+
+	blockHit(ball) {
+		var hit = false;
+		var blockSection = this.posY + this.height;
+		
+		if(ball.posY - ball.radius <= blockSection && this.active) {
+			//iterate over the circumference of the ball and check if any of the points are inside the rectangle
+			for(var i = 0; i < 360; i++) {                                                            
+				var x = ball.posX + ball.radius * Math.cos(i * Math.PI/180);
+				var y = ball.posY -  ball.radius * Math.sin(i * Math.PI/180);
+
+				if(x >= this.posX && x <= this.posX + this.width) {
+					if(y <= this.posY + this.height && y >= this.posY) {
+						hit = true;
+						ball.velY *= -1;
+						score += (40 - 10*this.level + 1);
+						break;
+					}
+				}
+			}		
+		}
+		if(hit) {
+			this.active = false;
+			return true;
+		} 
+		return false;	
+	}
 }
 
 class Blocks {
 	constructor() {
-		this.blocksArr = this.generateBlocks();
+		this.blockArr = this.generateBlocks();
 	}
 
 	/* Generate the intial blocks */
@@ -189,10 +257,21 @@ class Blocks {
 				posX += width + 5;
 				index++;
 			}                                             
-		}             
+		}
+		          
 		// console.log(blockArray);
 		return blockArray;              
 	}
+	updateBlocks(ball) {
+		var multiHits = 0;
+		for(var i = 0; i < this.blockArr.length; i++) {
+			// console.log(this.blocksArr[i]);
+			if(this.blockArr[i].blockHit(ball)) {
+				multiHits++;
+				if(multiHits > 1) ball.velY *= -1;
+			}
+		}
+	}   
 
 
 	get (property) {
