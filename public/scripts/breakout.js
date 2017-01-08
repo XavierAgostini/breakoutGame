@@ -1,47 +1,110 @@
 console.log('working');
-
+// Global Variables
+var canvas = document.getElementById("myCanvas");
+var canvasWidth = 500;
+var canvasHeight = 800;
+var ctx = canvas.getContext('2d');
+var interval = 10;
+var lifeLost = new Event('lifeLost');
+var gameOver = new Event('gameOver');
 
 class Game {
 	constructor() {
 		// Game Screen
-		this.canvas = document.getElementById("myCanvas");
-		this.ctx = canvas.getContext('2d');
-		this.canvasOffset = canvas.getBoundingClientRect().left;	
-		this.canvasWidth = 500;
-		this.canvasHeight = 800;
-
+		this.canvasOffset = canvas.getBoundingClientRect().left;
+	
 		// Game Settings
-		this.interval = 10;
-		this.score = new Score();
+		this.scoreBoard = new ScoreBoard();
 		this.highScore = 0;
 		this.numLives = 3;
 		
 		// Blocks initialized
 		this.blockWidth = 43;
 		this.blockHeight = 25;
-		this.blocks =  new Blocks(this.score);
+		this.blocks =  new Blocks(this.scoreBoard);
 
 		// Paddle initialized in the bottom middle of screen
-		this.paddle = new Paddle((this.canvasWidth - 100)/2, this.canvasHeight - 40, this.canvas);
+		this.paddle = new Paddle((canvasWidth - 100)/2, canvasHeight - 40);
 
 		// Ball initialized
-		this.ball = new Ball((this.canvasWidth)/2, 400);
+		this.ball = new Ball(canvasWidth/2, 400);
+
+		this.gameInterval;
+		var t = this;
+		document.addEventListener('lifeLost', function(event) {
+			t.lifeLost();
+		});
+		document.addEventListener('gameOver', function(event) {
+			t.gameOver();
+		});
+		var newGameBtn = document.getElementById("newGameBtn");
+		newGameBtn.addEventListener("click", function(event) {
+			newGameBtn.style.display = "none";
+			t.startGame();
+			t.blocks.resetBlocks();
+		});
 	}
 
+	writeScore() {
+		var scoreMessage = "Score: " + this.scoreBoard.score;
+		var liveMessage = "Lives: " + this.numLives;
+		ctx.font = "30px sans-serif";
+		ctx.fillText(scoreMessage, 10, 25);
+		ctx.fillText(liveMessage, 350, 25);
+	}
+
+	lifeLost() {
+		this.numLives--;
+		if(this.numLives == 0) {
+			this.gameOver();
+		}	
+	}
+	gameOver() {
+		console.log("Game Over");
+		clearInterval(this.gameInterval);
+		var t = this;
+		setTimeout(function() {
+			// Clear Canvas
+			ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+
+			
+
+			var currHighScore = t.scoreBoard.highScore;
+			t.scoreBoard.highScore = t.scoreBoard.score >  currHighScore ? t.scoreBoard.score : currHighScore;
+			t.scoreBoard.updateHighScore(t.scoreBoard.highScore);
+			newGameBtn.style.display = "inline";
+			
+			var message1 = "GAME OVER";
+			var message2 = "Score: " + t.scoreBoard.score; 
+			var message3 = "High score: " + t.scoreBoard.highScore;
+			
+			ctx.font = "30px sans-serif";
+			ctx.fillText(message1, 150, 50);
+			ctx.fillText(message2, 150, 150);
+			ctx.fillText(message3, 150, 200);
+		}, interval);	
+	}
+
+	startGame() {
+		var t = this;
+		this.scoreBoard.score = 0;
+		this.numLives = 3;
+		this.gameInterval = setInterval(function() {t.drawScreen()}, interval);
+	}
 
 	drawBlocks() {
 		for(var i = 0; i < this.blocks.blockArr.length; i++) {
 			var block = this.blocks.blockArr[i];
 			if(block.active) {
-				this.ctx.fillStyle = block.colour;
-				this.ctx.fillRect(block.posX, block.posY, block.width, block.height);
+				ctx.fillStyle = block.colour;
+				ctx.fillRect(block.posX, block.posY, block.width, block.height);
 			}	
 		}     
 	}
 
 	drawPaddle() {
-		this.ctx.fillStyle = this.paddle.colour;
-		this.ctx.fillRect(this.paddle.posX, this.paddle.posY, this.paddle.width, this.paddle.height);
+		ctx.fillStyle = this.paddle.colour;
+		ctx.fillRect(this.paddle.posX, this.paddle.posY, this.paddle.width, this.paddle.height);
 
 	}
 
@@ -59,40 +122,34 @@ class Game {
 		ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
 		this.paddle.updatePosition();
-		this.ball.ballPhysics(this.interval, this.canvasWidth, this.canvasHeight, this.paddle, this.blocks);
+		this.ball.ballPhysics(canvasWidth, canvasHeight, this.paddle, this.blocks);
 		this.blocks.updateBlocks(this.ball);
-		this.score.writeScore();
+		this.writeScore();
 		this.drawBlocks();
 		this.drawPaddle();
 		this.drawBall();
 		
 	}
-	startGame() {
-		var t = this;
-		setInterval(function() {t.drawScreen()}, t.interval);
-	}
+
+	
 }
 
-class Score {
+class ScoreBoard {
 	constructor() {
 		this.score = 0;
-		this.numLives = 3;
-		this.highScore = 0;
+		this.highScore = localStorage.getItem("highScore") || 0;
 	}
 	updateScore(score) {
 		this.score += score;
 	}
-	writeScore() {
-		var scoreMessage = "Score: " + this.score 
-		var liveMessage = "Lives: " + this.numLives;
-		ctx.font = "30px sans-serif";
-		ctx.fillText(scoreMessage, 10, 25);
-		ctx.fillText(liveMessage, 350, 25);
+	updateHighScore(score) {
+		localStorage.setItem("highScore", score);
 	}
-	resetScore() {
-		this.score = 0;
+	get(property) {
+		return this[property];
 	}
 }
+
 class Ball {
 	constructor(posX, posY) {
 		this.colour = 'white';
@@ -103,16 +160,21 @@ class Ball {
 		this.velY = 0.2;
 	}
 	/* Update ball position on canvas*/
-	ballPhysics(interval, canvasWidth, canvasHeight, paddle, blocks) {
+	ballPhysics(canvasWidth, canvasHeight, paddle, blocks) {
+		var bottomWallHit = false;
 		// Update Ball position
 		this.posY += this.velY * interval;
 		this.posX += this.velX * interval;
-	
+		
 		//if ball hits bottom wall
 		if(this.posY + this.radius >= canvasHeight) {
 			console.log('bottom wall hit');
-			lifeLost();
-			this.velY *= -1;
+			this.posY = 400;
+			this.posX = canvasWidth/2;
+			this.velX = 0;
+			// this.velY *= -1;
+			document.dispatchEvent(lifeLost);
+
 		}
 
 		//if ball hist top wall
@@ -144,18 +206,18 @@ class Ball {
 				this.velX = speed > 0.5 ? 0.5 : speed;
 			}
 		}
+
+
 	}
+
 	get(property) {
 		return this[property];
 	}
-	/* Check if ball has hit the paddle */
-	/* Check if ball has hit a wall */
-	/* Check if ball has hit a block */
 
 }
  
 class Paddle {
-	constructor(posX, posY, canvas) {
+	constructor(posX, posY) {
 		this.colour = 'black';
 		this.width = 100;
 		this.height = 15;
@@ -164,8 +226,8 @@ class Paddle {
 		this.posY = posY;
 		this.velX = 0;
 		this.speed = 0.5;
-		this.canvas = canvas;
 		this.canvasOffset = canvas.getBoundingClientRect().left;	
+
 		var t = this;
 		document.addEventListener("keydown", function(event) {
 			
@@ -188,7 +250,7 @@ class Paddle {
 		});
 
 		// Event Handlers for paddle control
-		this.canvas.addEventListener("mousemove", function(event) {
+		canvas.addEventListener("mousemove", function(event) {
 			var x = event.clientX - t.canvasOffset;
 			t.posX = x;
 		});
@@ -206,8 +268,6 @@ class Paddle {
 	get(property) {
 		return this[property];
 	}
-	
-	
 	
 }
 
@@ -255,9 +315,9 @@ class Block {
 }
 
 class Blocks {
-	constructor(score) {
+	constructor(scoreBoard) {
+		this.scoreBoard = scoreBoard;
 		this.blockArr = this.generateBlocks();
-		this.score = score;
 	}
 
 	/* Generate the intial blocks */
@@ -284,19 +344,29 @@ class Blocks {
 		// console.log(blockArray);
 		return blockArray;              
 	}
+	resetBlocks() {
+		for(var i = 0; i < this.blockArr.length; i++) {
+			this.blockArr[i].active = true;
+		}
+	}
 	updateBlocks(ball) {
 		var multiHits = 0;
+		var noMoreBlocks = false;
 		for(var i = 0; i < this.blockArr.length; i++) {
 			// console.log(this.blocksArr[i]);
 			if(this.blockArr[i].active && this.blockArr[i].blockHit(ball)) {
 				multiHits++;
 				if(multiHits > 1) ball.velY *= -1;
-				this.score.updateScore(40 - 10*this.blockArr[i].level + 1);
-
+				this.scoreBoard.updateScore(40 - 10*this.blockArr[i].level + 1);
 			}
+			noMoreBlocks = this.blockArr[i].active ? false : true;
+		}
+		// check if there are any blocks remaining
+		if(noMoreBlocks) { 
+			console.log('over');
+			document.dispatchEvent(gameOver);
 		}
 	}   
-
 
 	get (property) {
 		console.log(property)
