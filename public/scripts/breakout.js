@@ -1,6 +1,7 @@
 console.log('working');
 // Global Variables
 var canvas = document.getElementById("myCanvas");
+var canvasOffset = canvas.getBoundingClientRect().left;
 var canvasWidth = 500;
 var canvasHeight = 800;
 var ctx = canvas.getContext('2d');
@@ -8,10 +9,13 @@ var interval = 10;
 var lifeLost = new Event('lifeLost');
 var gameOver = new Event('gameOver');
 
+window.onresize = function(event) {
+	canvasOffset = canvas.getBoundingClientRect().left;
+}
 class Game {
 	constructor() {
 		// Game Screen
-		this.canvasOffset = canvas.getBoundingClientRect().left;
+		
 	
 		// Game Settings
 		this.scoreBoard = new ScoreBoard();
@@ -41,6 +45,7 @@ class Game {
 		newGameBtn.addEventListener("click", function(event) {
 			newGameBtn.style.display = "none";
 			t.startGame();
+			t.ball.resetBall();
 			t.blocks.resetBlocks();
 		});
 	}
@@ -169,9 +174,7 @@ class Ball {
 		//if ball hits bottom wall
 		if(this.posY + this.radius >= canvasHeight) {
 			console.log('bottom wall hit');
-			this.posY = 400;
-			this.posX = canvasWidth/2;
-			this.velX = 0;
+			this.resetBall();
 			// this.velY *= -1;
 			document.dispatchEvent(lifeLost);
 
@@ -209,7 +212,12 @@ class Ball {
 
 
 	}
-
+	resetBall() {
+		this.posX = canvasWidth/2;
+		this.posY = 400;
+		this.velX = 0;
+		this.velY = 0.2;
+	}
 	get(property) {
 		return this[property];
 	}
@@ -226,7 +234,7 @@ class Paddle {
 		this.posY = posY;
 		this.velX = 0;
 		this.speed = 0.5;
-		this.canvasOffset = canvas.getBoundingClientRect().left;	
+		
 
 		var t = this;
 		document.addEventListener("keydown", function(event) {
@@ -251,7 +259,7 @@ class Paddle {
 
 		// Event Handlers for paddle control
 		canvas.addEventListener("mousemove", function(event) {
-			var x = event.clientX - t.canvasOffset;
+			var x = event.clientX - canvasOffset - 50;
 			t.posX = x;
 		});
 		
@@ -334,6 +342,7 @@ class Blocks {
 			posX = 12;
 			posY += height + 5;
 			for(var j = 0; j < 10; j++) {	
+				//var colorIndex = Math.floor(Math.random()*5);
 				var block = new Block(index, i, true, blockColours[i], posX, posY, width, height);
 				blockArray.push(block);
 				posX += width + 5;
@@ -351,18 +360,24 @@ class Blocks {
 	}
 	updateBlocks(ball) {
 		var multiHits = 0;
-		var noMoreBlocks = false;
+		var moreBlocks = true;
 		for(var i = 0; i < this.blockArr.length; i++) {
+
+			if(moreBlocks && this.blockArr[i].active) {
+				moreBlocks = false;
+			} 
 			// console.log(this.blocksArr[i]);
 			if(this.blockArr[i].active && this.blockArr[i].blockHit(ball)) {
 				multiHits++;
 				if(multiHits > 1) ball.velY *= -1;
 				this.scoreBoard.updateScore(40 - 10*this.blockArr[i].level + 1);
+
+
 			}
-			noMoreBlocks = this.blockArr[i].active ? false : true;
+			
 		}
 		// check if there are any blocks remaining
-		if(noMoreBlocks) { 
+		if(moreBlocks) { 
 			console.log('over');
 			document.dispatchEvent(gameOver);
 		}

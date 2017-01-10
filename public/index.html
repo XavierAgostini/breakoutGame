@@ -1,15 +1,25 @@
 <!DOCTYPE html>
 <html>
 	<head>
+		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"/>
 		<style>
+			body {
+				background-color: #170510;
+			}
 			#myCanvas {                                     
 				border: 2px solid black;
 				background-color: #4b4747;
+				
 			}
 			#canvasHolder {
 				width: 80%;
 				margin: 0 auto;
+				text-align: center;
+				display: inherit;
+				margin: 0 auto;
+				color: white;
 			}
+
 			#newGameBtn {
 				display: none;
 				position: absolute;
@@ -18,15 +28,17 @@
 
 			}
 		</style>
-		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"/>
+
 	</head>
 	<body>
 		<div class="container">
 			<div class="row">
-				<div id="canvasHolder" class="col-md-8 col-md-offset-2">
-					<h1>Breakout</h1>
-					<canvas id="myCanvas" width=500 height=800></canvas>
-					<button id="newGameBtn" class="btn btn-primary btn-lg">Play Again</button>
+				<div class="col-md-8 col-md-offset-2">
+					<div id="canvasHolder" >
+						<h1>Breakout</h1>
+						<canvas id="myCanvas" width=500 height=800></canvas>
+						<button id="newGameBtn" class="btn btn-primary btn-lg">Play Again</button>
+					</div>
 				</div>
 			</div>
 		</div>
